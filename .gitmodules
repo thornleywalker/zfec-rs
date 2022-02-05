@@ -1,0 +1,3 @@
+[submodule "zfec"]
+	path = zfec
+	url = https://github.com/tahoe-lafs/zfec.git
