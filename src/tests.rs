@@ -6,35 +6,64 @@ const ENCODED: &[u8] =
 
 #[test]
 fn encoder_5_8_test() {
-    let mut fec = Fec::new(5, 8);
-    let encoded = fec.encode(&DATA.to_vec());
-    assert_eq!(encoded, ENCODED.to_vec());
+    encoder_test(5, 8);
+}
+fn encoder_test(k: usize, m: usize) {
+    let mut fec = Fec::new(k, m);
+    let mut encoded_chunks = fec.encode(&DATA.to_vec());
+    let mut encoded = vec![];
+    let _: () = encoded_chunks
+        .iter_mut()
+        .map(|chunk| encoded.append(chunk))
+        .collect();
+    eprintln!("encoded: {:?}", encoded);
+    assert_eq!(encoded, ENCODED);
 }
 
 #[test]
-// tests if fec can decode from complete message
+// tests if fec can decode for k=5, m=8
 fn decoder_5_8_test() {
-    // test if decoder can decode from complete message
-    let k = 5;
-    let m = 8;
+    decoder_test(5, 8);
+}
+#[test]
+// tests various combinations of k and m
+fn decoder_extensive() {
+    for m in 5..8 {
+        for k in 2..m - 1 {
+            decoder_test(k, m);
+        }
+    }
+}
+// assumes encoder works
+fn decoder_test(k: usize, m: usize) {
     let mut fec = Fec::new(k, m);
-    let decoded = fec.decode(&ENCODED.to_vec());
+    let mut chunks_enc = vec![];
+    let chunk_size = fec.chunk_size(DATA.len());
+    let padding = chunk_size * fec.k - DATA.len();
+    for (i, chunk) in fec.encode(&DATA.to_vec()).iter().enumerate() {
+        chunks_enc.push((i, chunk.to_vec()));
+    }
+    // test if decoder can decode from complete message
+    eprintln!("padding: {}", padding);
+    let decoded = fec.decode(&chunks_enc, padding);
     assert_eq!(
         decoded,
         DATA.to_vec(),
-        "Failed to decode from complete encoded message"
+        "Failed to decode from complete k: {}, m: {} encoded message",
+        k,
+        m
     );
+    eprintln!("Successfully decoded at k: {}, m: {}", fec.k, fec.m);
 
-    // test for missing one of each group
-    let chunk_size = fec.chunk_size(DATA.len());
-    for i in 0..k {
+    // test for missing parts of each group
+    for i in 0..k - 1 {
         let mut broken_enc = vec![];
-        broken_enc.append(&mut ENCODED[0..i * chunk_size].to_vec());
-        broken_enc.append(&mut ENCODED[(i + 1) * chunk_size..].to_vec());
-        let decoded = fec.decode(&broken_enc);
+        broken_enc.append(&mut chunks_enc[0..i].to_vec());
+        broken_enc.append(&mut chunks_enc[(i + 2)..].to_vec());
+        let decoded = fec.decode(&broken_enc, padding);
         assert_eq!(
-            DATA.to_vec(),
             decoded,
+            DATA.to_vec(),
             "Failed to decode while missing {}th block",
             i
         );
