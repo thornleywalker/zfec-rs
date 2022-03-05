@@ -25,7 +25,7 @@ fn encoder_test(k: usize, m: usize) {
 fn decoder_5_8_test() {
     decoder_test(5, 8);
 }
-#[test]
+//#[test]
 // tests various combinations of k and m
 fn decoder_extensive() {
     for m in 5..8 {
