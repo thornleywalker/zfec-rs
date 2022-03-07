@@ -400,7 +400,7 @@ impl Fec {
      * param m the total number of blocks created
      */
     pub fn new(k: usize, n: usize) -> Result<Fec> {
-        eprintln!("Creating new - k: {}, n: {}", k, n);
+        //  eprintln!("Creating new - k: {}, n: {}", k, n);
         if k < 1 {
             return Err(Error::ZeroK);
         }
@@ -447,7 +447,7 @@ impl Fec {
             tmp_m[col] = 0;
         }
         for row in 0..(n - 1) {
-            eprintln!("row: {}", row);
+            //  eprintln!("row: {}", row);
             let p: &mut [u8] = &mut tmp_m[row * k..(row + 1) * k];
             for col in 0..k {
                 p[col] = ret_val.statics.gf_exp[Statics::modnn((row * col) as u32) as usize];
@@ -474,7 +474,7 @@ impl Fec {
         // the Vec is initialized to 0's when defined
         // memset(retval->enc_matrix, '\0', k * k * sizeof(gf));
         for i in 0..k {
-            eprintln!("i: {}", i);
+            //  eprintln!("i: {}", i);
             enc_matrix[i * (k + 1)] = 1;
         }
 
@@ -571,93 +571,6 @@ impl Fec {
         // eprintln!("ret_chunks: {:?}", ret_chunks);
         Ok(ret_chunks)
     }
-    // fn _invert_mat(&self, src: &mut [Gf], k: usize) {
-    //     let mut c: Gf;
-    //     let (mut irow, mut icol) = (0, 0);
-    //     let (mut row, mut col, mut i, mut ix) = (0, 0, 0, 0);
-
-    //     let mut indxc = vec![0; k];
-    //     let mut indxr = vec![0; k];
-    //     let mut ipiv = vec![0; k];
-    //     let mut id_row = vec![0; k];
-
-    //     /*
-    //      * ipiv marks elements already used as pivots.
-    //      */
-    //     for i in 0..k {
-    //         ipiv[i] = 0;
-    //     }
-
-    //     for col in 0..k {
-    //         let mut pivot_row: *mut Gf;
-    //         let mut piv_found: bool = false;
-
-    //         /*
-    //          * Zeroing column 'col', look for a non-zero element.
-    //          * First try on the diagonal, if it fails, look elsewhere.
-    //          */
-    //         if ipiv[col] != 1 && src[col * k + col] != 0 {
-    //             irow = col;
-    //             icol = col;
-    //             // goto found_piv;
-    //         }
-    //         for row in 0..k {
-    //             if ipiv[row] != 1 {
-    //                 for ix in 0..k {
-    //                     if ipiv[ix] == 0 {
-    //                         if src[row * k + ix] != 0 {
-    //                             irow = row;
-    //                             icol = ix;
-    //                             // goto found_piv;
-    //                             piv_found = true;
-    //                         }
-    //                     } else {
-    //                         assert!(ipiv[ix] <= 1);
-    //                     }
-    //                     if piv_found {
-    //                         break;
-    //                     }
-    //                 }
-    //             }
-    //             if piv_found {
-    //                 break;
-    //             }
-    //         }
-
-    //         // found_piv:
-    //         ipiv[icol] += 1;
-    //         /*
-    //          * swap rows irow and icol, so afterwards the diagonal
-    //          * element will be correct. Rarely done, not worth
-    //          * optimizing.
-    //          */
-    //         if irow != icol {
-    //             for ix in 0..k {
-    //                 // direct implementation is easiest solution for the "SWAP" macro
-    //                 let tmp = src[irow * k + ix];
-    //                 src[irow * k + ix] = src[icol * k + ix];
-    //                 src[icol * k + ix] = tmp;
-    //             }
-    //         }
-    //         indxr[col] = irow;
-    //         indxc[col] = icol;
-    //         let pivot_row = &mut src[icol * k..];
-    //         c = pivot_row[icol];
-    //         assert!(c != 0);
-    //         if c != 1 {
-    //             /* otherwhise this is a NOP */
-    //             /*
-    //              * this is done often , but optimizing is not so
-    //              * fruitful, at least in the obvious ways (unrolling)
-    //              */
-    //             c = self.statics.inverse[c as usize];
-    //             pivot_row[icol] = 1;
-    //             for ix in 0..k {
-    //                 pivot_row[ix] = self.statics.gf_mul(c, pivot_row[ix]);
-    //             }
-    //         }
-    //     }
-    // }
     fn build_decode_matrix_into_space(&self, index: &[usize], k: usize, matrix: &mut [Gf]) {
         for i in 0..k {
             let p = &mut matrix[i * k..];
@@ -686,9 +599,9 @@ impl Fec {
             chunks[*num] = chunk.to_vec();
             // chunks.insert(*num, chunk.to_vec());
         }
-        eprintln!("encoded data: {:?}", encoded_data);
-        eprintln!("share_nums: {:?}", share_nums);
-        eprintln!("chunks: {:?}", chunks);
+        //  eprintln!("encoded data: {:?}", encoded_data);
+        //  eprintln!("share_nums: {:?}", share_nums);
+        //  eprintln!("chunks: {:?}", chunks);
 
         let sz = chunks[share_nums[0] as usize].len();
         let mut ret_chunks = vec![vec![0; sz]; self.k];
