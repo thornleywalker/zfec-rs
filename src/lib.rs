@@ -41,14 +41,14 @@ type Result<Fec> = std::result::Result<Fec, Error>;
  */
 struct Statics {
     gf_exp: [Gf; 510],
-    gf_log: [u32; 256],
+    gf_log: [i32; 256],
     inverse: [Gf; 256],
     gf_mul_table: [[Gf; 256]; 256],
 }
 impl Statics {
     pub fn new() -> Self {
         let mut gf_exp: [Gf; 510] = [0; 510];
-        let mut gf_log: [u32; 256] = [0; 256];
+        let mut gf_log: [i32; 256] = [0; 256];
         let mut inverse: [Gf; 256] = [0; 256];
         let mut gf_mul_table: [[Gf; 256]; 256] = [[0; 256]; 256];
         Self::generate_gf(&mut gf_exp, &mut gf_log, &mut inverse);
@@ -61,7 +61,7 @@ impl Statics {
         }
     }
     /// Initialize the data structures used for computations in GF
-    fn generate_gf(gf_exp: &mut [Gf; 510], gf_log: &mut [u32; 256], inverse: &mut [Gf; 256]) {
+    fn generate_gf(gf_exp: &mut [Gf; 510], gf_log: &mut [i32; 256], inverse: &mut [Gf; 256]) {
         let mut mask: Gf;
 
         mask = 1; /* x ** 0 = 1 */
@@ -74,7 +74,7 @@ impl Statics {
          */
         for i in 0..8 {
             gf_exp[i] = mask;
-            gf_log[gf_exp[i] as usize] = i as u32;
+            gf_log[gf_exp[i] as usize] = i as i32;
             /*
              * If Pp[i] == 1 then \alpha ** i occurs in poly-repr
              * gf_exp[8] = \alpha ** 8
@@ -103,7 +103,7 @@ impl Statics {
             } else {
                 gf_exp[i] = gf_exp[i - 1] << 1;
             }
-            gf_log[gf_exp[i] as usize] = i as u32;
+            gf_log[gf_exp[i] as usize] = i as i32;
         }
         /*
          * log(0) is not defined, so use a special value
@@ -127,15 +127,19 @@ impl Statics {
     fn _init_mul_table(
         gf_mul_table: &mut [[Gf; 256]; 256],
         gf_exp: &[Gf; 510],
-        gf_log: &[u32; 256],
+        gf_log: &[i32; 256],
     ) {
         for i in 0..256 {
             for j in 0..256 {
                 gf_mul_table[i][j] = gf_exp[Self::modnn(gf_log[i] + gf_log[j]) as usize];
             }
         }
+        for j in 0..256 {
+            gf_mul_table[j][0] = 0;
+            gf_mul_table[0][j] = 0;
+        }
     }
-    fn modnn(mut x: u32) -> Gf {
+    fn modnn(mut x: i32) -> Gf {
         while x >= 255 {
             x -= 255;
             x = (x >> 8) + (x & 255);
@@ -143,23 +147,31 @@ impl Statics {
         x as Gf
     }
     pub fn addmul(&self, dst: &mut [Gf], src: &[Gf], c: Gf, sz: usize) {
+        eprintln!("c: {:02x}, sz: {}", c, sz);
+        eprintln!("dst: {:02x?}", dst);
+        eprintln!("src: {:02x?}", src);
         if c != 0 {
             self._addmul1(dst, src, c, sz);
         }
     }
     fn _addmul1(&self, dst: &mut [Gf], src: &[Gf], c: Gf, sz: usize) {
-        let mulc = self.gf_mul_table[c as usize];
-
-        //let lim = &dst[sz - UNROLL + 1..];
-        // they unroll, for now I'll just do it directly
-        for i in 0..sz {
-            dst[i] ^= mulc[src[i] as usize];
+        if src.len() > 0 {
+            let mulc = self.gf_mul_table[c as usize];
+            //let lim = &dst[sz - UNROLL + 1..];
+            // they unroll, for now I'll just do it directly
+            for i in 0..sz {
+                dst[i] ^= mulc[src[i] as usize];
+            }
+            eprintln!("dst: {:02x?}", dst);
         }
     }
     /*
      * computes C = AB where A is n*k, B is k*m, C is n*m
      */
     fn _matmul(&self, a: &[Gf], b: &[Gf], c: &mut [Gf], n: usize, k: usize, m: usize) {
+        eprintln!("a: {:02x?}", a);
+        eprintln!("b: {:02x?}", b);
+        eprintln!("c: {:02x?}", c);
         for row in 0..n {
             for col in 0..m {
                 let mut acc: Gf = 0;
@@ -171,6 +183,7 @@ impl Statics {
                 c[row * m + col] = acc;
             }
         }
+        eprintln!("c: {:02x?}", c);
     }
     /*
      * fast code for inverting a vandermonde matrix.
@@ -350,7 +363,8 @@ impl Statics {
                     if ix != icol {
                         c = p[icol];
                         p[icol] = 0;
-                        self.addmul(p, &pivot_clone[..], c, k);
+                        eprintln!("Loc 1");
+                        self.addmul(p, &pivot_clone[k..], c, k);
                     }
                 }
             }
@@ -448,9 +462,9 @@ impl Fec {
         }
         for row in 0..(n - 1) {
             //  eprintln!("row: {}", row);
-            let p: &mut [u8] = &mut tmp_m[row * k..(row + 1) * k];
+            let p: &mut [u8] = &mut tmp_m[(row + 1) * k..];
             for col in 0..k {
-                p[col] = ret_val.statics.gf_exp[Statics::modnn((row * col) as u32) as usize];
+                p[col] = ret_val.statics.gf_exp[Statics::modnn((row * col) as i32) as usize];
             }
         }
 
@@ -459,6 +473,7 @@ impl Fec {
          * k*k vandermonde matrix, multiply right the bottom n-k rows
          * by the inverse, and construct the identity matrix at the top.
          */
+        eprintln!("tmp_m: {:02x?}", tmp_m);
         ret_val.statics._invert_vdm(&mut tmp_m, k); /* much faster than _invert_mat */
         ret_val.statics._matmul(
             &tmp_m[k * k..],
@@ -505,13 +520,13 @@ impl Fec {
 
         let mut chunks = vec![];
 
-        // eprintln!("data: {:?}", data);
-        // eprintln!("data len: {:?}", data.len());
+        // eprintln!("data: {:02x?}", data);
+        // eprintln!("data len: {:02x?}", data.len());
 
         for i in 0..self.k {
             let mut temp_vec = vec![];
             if (i * chunk_size) >= data_slice.len() {
-                // eprintln!("empty chunk");
+                eprintln!("empty chunk");
                 temp_vec.append(&mut vec![0; chunk_size].to_vec());
             } else if ((i * chunk_size) < data_slice.len())
                 && (((i + 1) * chunk_size) > data_slice.len())
@@ -528,7 +543,7 @@ impl Fec {
             } else {
                 let new_chunk =
                     &data_slice[(i * chunk_size) as usize..((i + 1) * chunk_size) as usize];
-                // eprintln!("normal chunk: {:?}", new_chunk);
+                // eprintln!("normal chunk: {:02x?}", new_chunk);
                 temp_vec.append(&mut new_chunk.to_vec())
             }
             chunks.push(temp_vec);
@@ -538,6 +553,11 @@ impl Fec {
         let num_check_blocks_produced = self.m - self.k;
         let mut check_blocks_produced = vec![vec![0; chunk_size]; num_check_blocks_produced];
         let check_block_ids: Vec<usize> = (self.k..self.m).map(|x| x as usize).collect();
+        eprintln!("num: {}", num_check_blocks_produced);
+        eprintln!("blocks: {:?}", check_blocks_produced);
+        eprintln!("ids: {:?}", check_block_ids);
+
+        ///////// internals
 
         let mut k = 0;
         while k < chunk_size {
@@ -552,10 +572,13 @@ impl Fec {
                     return Err(Error::Tbd);
                 }
                 let p = &self.enc_matrix[fecnum as usize * self.k..];
+                eprintln!("enc_matrix: {:02x?}", &self.enc_matrix);
+                eprintln!("p: {:02x?}", p);
                 for j in 0..self.k {
+                    eprintln!("Loc 2");
                     self.statics.addmul(
                         &mut check_blocks_produced[i][k..],
-                        &chunks[j][k..],
+                        &chunks[j][k..k + stride],
                         p[j],
                         stride,
                     );
@@ -565,10 +588,12 @@ impl Fec {
             k += STRIDE;
         }
 
+        ///////// internals
+
         let mut ret_chunks = vec![];
         ret_chunks.append(&mut chunks);
         ret_chunks.append(&mut check_blocks_produced);
-        // eprintln!("ret_chunks: {:?}", ret_chunks);
+        // eprintln!("ret_chunks: {:02x?}", ret_chunks);
         Ok(ret_chunks)
     }
     fn build_decode_matrix_into_space(&self, index: &[usize], k: usize, matrix: &mut [Gf]) {
@@ -599,36 +624,42 @@ impl Fec {
             chunks[*num] = chunk.to_vec();
             // chunks.insert(*num, chunk.to_vec());
         }
-        //  eprintln!("encoded data: {:?}", encoded_data);
-        //  eprintln!("share_nums: {:?}", share_nums);
-        //  eprintln!("chunks: {:?}", chunks);
+        eprintln!("encoded data: {:02x?}", encoded_data);
+        eprintln!("share_nums: {:02x?}", share_nums);
+        eprintln!("chunks: {:02x?}", chunks);
 
         let sz = chunks[share_nums[0] as usize].len();
         let mut ret_chunks = vec![vec![0; sz]; self.k];
 
         let mut complete = true;
-        let mut missing = vec![];
+        let mut missing = std::collections::VecDeque::new();
         let mut replaced = vec![];
-        for i in 0..self.m {
+        // check which of the original chunks are missing
+        for i in 0..self.k {
             if !share_nums.contains(&i) {
                 complete = false;
-                missing.insert(0, i);
-                // eprintln!("Missing {}", i);
+                missing.push_back(i);
+                eprintln!("Missing {}", i);
             }
-            if i >= self.k {
-                match missing.pop() {
+        }
+
+        // replace the missing chunks with fec chunks
+        for i in self.k..self.m {
+            if chunks[i].len() != 0 {
+                match missing.pop_front() {
                     Some(index) => {
-                        // eprintln!("Moving {} to {}", i, index);
+                        eprintln!("Moving {} to {}", i, index);
                         replaced.push(index);
                         share_nums.insert(index, i);
                         chunks[index] = chunks[i].to_vec();
-                        // eprintln!("share_nums: {:?}", share_nums);
-                        // eprintln!("chunks: {:?}", chunks);
+                        eprintln!("share_nums: {:02x?}", share_nums);
+                        eprintln!("chunks: {:02x?}", chunks);
                     }
                     None => {}
                 }
             }
         }
+
         if complete {
             let flat = Self::flatten(&mut chunks[..self.k].to_vec());
             return flat[..flat.len() - padding].to_vec();
@@ -650,6 +681,7 @@ impl Fec {
                     ret_chunks[outix][i] = 0;
                 }
                 for col in 0..self.k {
+                    eprintln!("Loc 2");
                     self.statics.addmul(
                         &mut ret_chunks[outix][..],
                         &chunks[col][..],
@@ -663,12 +695,12 @@ impl Fec {
 
         /////////////// end internal decode
 
-        // eprintln!("replaced: {:?}", replaced);
-        // eprintln!("ret_chunks: {:?}", ret_chunks);
+        eprintln!("replaced: {:02x?}", replaced);
+        eprintln!("ret_chunks: {:02x?}", ret_chunks);
         // fix the replaced chunks
         for i in 0..replaced.len() {
             chunks[replaced[i]] = ret_chunks[i].to_vec();
-            // eprintln!("chunks: {:?}", chunks);
+            eprintln!("chunks: {:02x?}", chunks);
         }
         let ret_vec = Self::flatten(&mut chunks[0..self.k].to_vec());
 
