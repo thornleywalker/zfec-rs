@@ -1,5 +1,7 @@
 mod tests;
 
+use std::fmt;
+
 /*
  * Primitive polynomials - see Lin & Costello, Appendix A,
  * and  Lee & Messerschmitt, p. 453.
@@ -26,6 +28,32 @@ pub enum Error {
     KGtN,
     Tbd,
 }
+impl std::fmt::Display for Error {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "Zfec error: {}",
+            match self {
+                Self::ZeroK => {
+                    "'k' must be greater than 0"
+                }
+                Self::ZeroM => {
+                    "'m' must be greater than 0"
+                }
+                Self::BigN => {
+                    "'n' must be less than 257"
+                }
+                Self::KGtN => {
+                    "'k'  must be less than 'n'"
+                }
+                Self::Tbd => {
+                    "Unknown error"
+                }
+            }
+        )
+    }
+}
+impl std::error::Error for Error {}
 
 type Gf = u8;
 //type Matrix<T> = Vec<Vec<T>>;
