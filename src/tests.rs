@@ -21,12 +21,11 @@ fn encoder_test(k: usize, m: usize) {
     //     .iter_mut()
     //     .map(|chunk| encoded.append(chunk))
     //     .collect();
-    eprintln!("encoded: {:02x?}", encoded);
+    // eprintln!!("encoded: {:02x?}", encoded);
     assert_eq!(encoded, ENCODED);
 }
-
-#[test]
 // tests if fec can decode for k=5, m=8
+#[test]
 fn decoder_5_8_test() {
     decoder_test(5, 8);
 }
@@ -56,7 +55,7 @@ fn decoder_test(k: usize, m: usize) {
         chunks_enc.insert(i, chunk.to_vec());
     }
     // test if decoder can decode from complete message
-    eprintln!("padding: {}", padding);
+    // eprintln!!("padding: {}", padding);
     let decoded = fec.decode(&map_to_vec(&chunks_enc), padding);
     assert_eq!(
         decoded,
@@ -65,11 +64,11 @@ fn decoder_test(k: usize, m: usize) {
         k,
         m
     );
-    eprintln!("Successfully decoded at k: {}, m: {}", fec.k, fec.m);
+    // eprintln!!("Successfully decoded at k: {}, m: {}", fec.k, fec.m);
 
     // test for missing each part of each group
     for i in 0..m {
-        eprintln!("With #{} missing", i);
+        // eprintln!!("With #{} missing", i);
         let mut broken_enc = chunks_enc.clone();
         broken_enc.remove(&i);
         //eprintln!("brkn_enc: {:02x?}", broken_enc);
@@ -88,17 +87,17 @@ fn decoder_test(k: usize, m: usize) {
     // just to really give it a go
     for _ in 0..20 {
         for n in 1..=max_missing {
-            eprintln!("With {} missing chunks", n);
+            // eprintln!!("With {} missing chunks", n);
             let mut broken_enc = chunks_enc.clone();
-            for i in 0..n {
+            for _ in 0..n {
                 let keys = &broken_enc.keys().collect::<Vec<&usize>>()[..];
-                eprintln!("keys: {:02x?}", keys);
+                // eprintln!!("keys: {:02x?}", keys);
                 let index = rng.gen_range(0..keys.len());
                 let to_remove = *keys[index];
-                eprintln!("Removing #{}", to_remove);
+                // eprintln!!("Removing #{}", to_remove);
                 let _ = broken_enc.remove(&to_remove);
             }
-            eprintln!("broken: {:02x?}", broken_enc);
+            // eprintln!!("broken: {:02x?}", broken_enc);
             let decoded = fec.decode(&map_to_vec(&broken_enc), padding);
             assert_eq!(
                 decoded,

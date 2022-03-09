@@ -12,7 +12,3 @@ readme = "README.md"
 
 [dependencies]
 rand = "0.8.5"
-
-[build-dependencies]
-cc = "1.0.72"
-bindgen = "0.53.1"
