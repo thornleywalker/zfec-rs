@@ -1,4 +1,4 @@
-# zfec-rs
-Rust wrapper around zfec.
-Requires LLVM to be installed for bindgen.
+# Zfec-rs
+A pure Rust implementation of Zfec
+
 Based on https://github.com/tahoe-lafs/zfec
