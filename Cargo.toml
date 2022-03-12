@@ -1,12 +1,16 @@
 [package]
 name = "zfec-rs"
+authors = ["Walker Thornley"]
 version = "0.1.0"
 edition = "2021"
+license = "GPL-3.0"
 license-file = "LICENSE"
 description = "A Rust implementation of the Zfec library"
 homepage = "https://github.com/thornleywalker/zfec-rs"
 repository = "https://github.com/thornleywalker/zfec-rs"
 readme = "README.md"
+keywords = ["fec", "erasure", "parity"]
+categories = ["encoding", "algorithms"]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
