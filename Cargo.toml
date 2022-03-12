@@ -3,12 +3,12 @@ name = "zfec-rs"
 version = "0.1.0"
 edition = "2021"
 license-file = "LICENSE"
-description = "Wrapper of zfec library"
+description = "A Rust implementation of the Zfec library"
 homepage = "https://github.com/thornleywalker/zfec-rs"
 repository = "https://github.com/thornleywalker/zfec-rs"
 readme = "README.md"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
-[dependencies]
+[dev-dependencies]
 rand = "0.8.5"
