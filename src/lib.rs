@@ -100,10 +100,7 @@ pub struct Chunk {
 impl Chunk {
     /// Creates a new chunk
     pub fn new(data: Vec<u8>, index: usize) -> Self {
-        Self {
-            data: data,
-            index: index,
-        }
+        Self { data, index }
     }
 }
 impl From<Chunk> for (Vec<Gf>, usize) {
@@ -206,15 +203,15 @@ impl Fec {
         let mut enc_matrix: Vec<Gf> = vec![0; m * k];
 
         let mut ret_val = Fec {
-            k: k,
-            m: m,
+            k,
+            m,
             enc_matrix: vec![], // needs to be added in below
             // gf_exp: gf_exp,
             // gf_log: gf_log,
             // inverse: inverse,
             // // magic: (((FEC_MAGIC ^ k as u32) ^ m as u32) ^ (enc_matrix)) as u64,
             // gf_mul_table: gf_mul_table,
-            statics: statics,
+            statics,
         };
 
         /*
@@ -222,15 +219,15 @@ impl Fec {
          * The first row is special, cannot be computed with exp. table.
          */
         tmp_m[0] = 1;
-        for col in 1..k {
+        (1..k).for_each(|col| {
             tmp_m[col] = 0;
-        }
+        });
         for row in 0..(m - 1) {
             //// eprintln!("row: {}", row);
             let p: &mut [u8] = &mut tmp_m[(row + 1) * k..];
-            for col in 0..k {
+            (0..k).for_each(|col| {
                 p[col] = ret_val.statics.gf_exp[Statics::modnn((row * col) as i32) as usize];
-            }
+            });
         }
 
         /*
@@ -273,7 +270,7 @@ impl Fec {
         // clean side
         let chunk_size = self.chunk_size(data.len());
         // eprintln!("chunk_size: {}", chunk_size);
-        let data_slice = &data[..];
+        let data_slice = data;
 
         let mut chunks = vec![];
 
@@ -292,16 +289,13 @@ impl Fec {
                 // finish current chunk
                 temp_vec.append(&mut data_slice[i * chunk_size..].to_vec());
                 // add padding
-                let added = ((i + 1) * chunk_size) as usize - data_slice.len();
+                let added = ((i + 1) * chunk_size) - data_slice.len();
                 // eprint!("final slice, padding");
-                for _ in 0..added {
-                    // eprint!!(".");
-                    temp_vec.push(0);
-                }
+                let mut added_padding = vec![0; added];
+                temp_vec.append(&mut added_padding);
                 padding += added;
             } else {
-                let new_chunk =
-                    &data_slice[(i * chunk_size) as usize..((i + 1) * chunk_size) as usize];
+                let new_chunk = &data_slice[(i * chunk_size)..((i + 1) * chunk_size)];
                 // eprintln!("normal chunk: {:02x?}", new_chunk);
                 temp_vec.append(&mut new_chunk.to_vec())
             }
@@ -311,7 +305,7 @@ impl Fec {
 
         let num_check_blocks_produced = self.m - self.k;
         let mut check_blocks_produced = vec![vec![0; chunk_size]; num_check_blocks_produced];
-        let check_block_ids: Vec<usize> = (self.k..self.m).map(|x| x as usize).collect();
+        let check_block_ids: Vec<usize> = (self.k..self.m).collect();
         // eprintln!("num: {}", num_check_blocks_produced);
         // eprintln!("blocks: {:?}", check_blocks_produced);
         // eprintln!("ids: {:?}", check_block_ids);
@@ -330,7 +324,7 @@ impl Fec {
                 if fecnum < self.k {
                     return Err(Error::Tbd);
                 }
-                let p = &self.enc_matrix[fecnum as usize * self.k..];
+                let p = &self.enc_matrix[fecnum * self.k..];
                 // eprintln!("enc_matrix: {:02x?}", &self.enc_matrix);
                 // eprintln!("p: {:02x?}", p);
                 for j in 0..self.k {
@@ -381,7 +375,7 @@ impl Fec {
         // eprintln!("share_nums: {:02x?}", share_nums);
         // eprintln!("chunks: {:02x?}", chunks);
 
-        let sz = chunks[share_nums[0] as usize].len();
+        let sz = chunks[share_nums[0]].len();
         let mut ret_chunks = vec![vec![0; sz]; self.k];
 
         let mut complete = true;
@@ -398,17 +392,14 @@ impl Fec {
 
         // replace the missing chunks with fec chunks
         for i in self.k..self.m {
-            if chunks[i].len() != 0 {
-                match missing.pop_front() {
-                    Some(index) => {
-                        // eprintln!("Moving {} to {}", i, index);
-                        replaced.push(index);
-                        share_nums.insert(index, i);
-                        chunks[index] = chunks[i].to_vec();
-                        // eprintln!("share_nums: {:02x?}", share_nums);
-                        // eprintln!("chunks: {:02x?}", chunks);
-                    }
-                    None => {}
+            if !chunks[i].is_empty() {
+                if let Some(index) = missing.pop_front() {
+                    // eprintln!("Moving {} to {}", i, index);
+                    replaced.push(index);
+                    share_nums.insert(index, i);
+                    chunks[index] = chunks[i].to_vec();
+                    // eprintln!("share_nums: {:02x?}", share_nums);
+                    // eprintln!("chunks: {:02x?}", chunks);
                 }
             }
         }
@@ -479,9 +470,9 @@ impl Fec {
                 p[i] = 1;
             } else {
                 // memcpy(p, &(code->enc_matrix[index[i] * code->k]), k);
-                for j in 0..k {
+                (0..k).for_each(|j| {
                     p[j] = self.enc_matrix[(index[i] * self.k) + j];
-                }
+                });
             }
         }
         self.statics._invert_mat(matrix, k);
@@ -510,12 +501,12 @@ impl Statics {
         let mut inverse: [Gf; 256] = [0; 256];
         let mut gf_mul_table: [[Gf; 256]; 256] = [[0; 256]; 256];
         Self::generate_gf(&mut gf_exp, &mut gf_log, &mut inverse);
-        Self::_init_mul_table(&mut gf_mul_table, &mut gf_exp, &mut gf_log);
+        Self::_init_mul_table(&mut gf_mul_table, &gf_exp, &gf_log);
         Self {
-            gf_exp: gf_exp,
-            //gf_log: gf_log,
-            inverse: inverse,
-            gf_mul_table: gf_mul_table,
+            gf_exp,
+            //gf_log,
+            inverse,
+            gf_mul_table,
         }
     }
     /// Initialize the data structures used for computations in GF
@@ -613,7 +604,7 @@ impl Statics {
         }
     }
     fn _addmul1(&self, dst: &mut [Gf], src: &[Gf], c: Gf, sz: usize) {
-        if src.len() > 0 {
+        if !src.is_empty() {
             let mulc = self.gf_mul_table[c as usize];
             //let lim = &dst[sz - UNROLL + 1..];
             // they unroll, for now I'll just do it directly
@@ -654,7 +645,7 @@ impl Statics {
      * p = coefficients of the matrix (p_i)
      * q = values of the polynomial (known)
      */
-    fn _invert_vdm(&self, src: &mut Vec<Gf>, k: usize) {
+    fn _invert_vdm(&self, src: &mut [Gf], k: usize) {
         /*
          * b holds the coefficient for the matrix inversion
          * c holds the coefficient of P(x) = Prod (x - p_i), i=0..k-1
@@ -681,13 +672,13 @@ impl Statics {
          * After k steps we are done.
          */
         c[k - 1] = p[0]; /* really -p(0), but x = -x in GF(2^m) */
-        for i in 1..k {
+        (1..k).for_each(|i| {
             let p_i = p[i]; /* see above comment */
             for j in (k - 1 - (i - 1))..(k - 1) {
                 c[j] ^= self.gf_mul(p_i, c[j + 1]);
             }
             c[k - 1] ^= p_i;
-        }
+        });
 
         for row in 0..k {
             /*
@@ -704,13 +695,6 @@ impl Statics {
                 src[col * k + row] = self.gf_mul(self.inverse[t as usize], b[col]);
             }
         }
-
-        // unnecessary for Rust
-        // free(c);
-        // free(b);
-        // free(p);
-
-        return;
     }
     fn gf_mul(&self, x: Gf, y: Gf) -> Gf {
         self.gf_mul_table[x as usize][y as usize]
@@ -727,9 +711,9 @@ impl Statics {
         /*
          * ipiv marks elements already used as pivots.
          */
-        for i in 0..k {
+        (0..k).for_each(|i| {
             ipiv[i] = 0;
-        }
+        });
 
         for col in 0..k {
             let mut piv_found: bool = false;
@@ -776,9 +760,7 @@ impl Statics {
             if irow != icol {
                 for ix in 0..k {
                     // direct implementation is easiest solution for the "SWAP" macro
-                    let tmp = src[irow * k + ix];
-                    src[irow * k + ix] = src[icol * k + ix];
-                    src[icol * k + ix] = tmp;
+                    src.swap(irow * k + ix, icol * k + ix);
                 }
             }
             indxr[col] = irow;
@@ -794,9 +776,9 @@ impl Statics {
                  */
                 c = self.inverse[c as usize];
                 pivot_row[icol] = 1;
-                for ix in 0..k {
+                (0..k).for_each(|ix| {
                     pivot_row[ix] = self.gf_mul(c, pivot_row[ix]);
-                }
+                });
             }
             /*
              * from all rows, remove multiples of the selected row
@@ -832,9 +814,7 @@ impl Statics {
             if indxr[col - 1] != indxc[col - 1] {
                 for row in 0..k {
                     // direct implementation is easiest solution for the "SWAP" macro
-                    let tmp = src[row * k + indxr[col - 1]];
-                    src[row * k + indxr[col - 1]] = src[row * k + indxc[col - 1]];
-                    src[row * k + indxc[col - 1]] = tmp;
+                    src.swap(row * k + indxr[col - 1], row * k + indxc[col - 1]);
                 }
             }
         }
