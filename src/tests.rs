@@ -15,8 +15,7 @@
  */
 
 use super::*;
-use rand::{thread_rng, Rng};
-use std::{collections::BTreeMap, fs, io::prelude::*, time};
+use rand::Rng;
 
 const DATA: &[u8] = b"some_ssidthe_password";
 const ENCODED: &[u8] =
@@ -28,7 +27,7 @@ fn encoder_5_8_test() {
 }
 fn encoder_test(k: usize, m: usize) {
     let fec = Fec::new(k, m).unwrap();
-    let (mut encoded_chunks, _) = fec.encode(&DATA.to_vec()).unwrap();
+    let (mut encoded_chunks, _) = fec.encode(DATA).unwrap();
     let mut encoded = vec![];
     for chunk in &mut encoded_chunks {
         encoded.append(&mut chunk.data);
@@ -51,9 +50,9 @@ fn decoder_extensive() {
 }
 // assumes encoder works
 fn decoder_test(k: usize, m: usize) {
-    let mut fec = Fec::new(k, m).unwrap();
+    let fec = Fec::new(k, m).unwrap();
     // let mut chunks_enc: BTreeMap<usize, Vec<u8>> = BTreeMap::new();
-    let (chunks, padding) = fec.encode(&DATA).unwrap();
+    let (chunks, padding) = fec.encode(DATA).unwrap();
     // for (i, chunk) in chunks.iter().enumerate() {
     //     chunks_enc.insert(i, chunk.to_vec());
     // }
